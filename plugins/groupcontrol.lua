@@ -1,5 +1,12 @@
 do
-
+local function create_group(msg)
+    if not is_sudo(msg) then
+        return "you are not sudo"
+    end
+    local group_creator = msg.from.print_name
+    create_group_chat (group_creator, group_name, ok_cb, false)
+    return 'گروه '..string.gsub(group_name, '_', ' ')..' ساخته شد، پيامها را بررسي کنيد '
+end
 -- make sure to set with value that not higher than stats.lua
 local NUM_MSG_MAX = 4
 local TIME_CHECK = 4 -- seconds
@@ -293,6 +300,27 @@ local function show_group_settings(msg, data)
     if not is_momod(msg) then
         return "For moderators only!"
     end
+-- expire time and lock cmd
+local function run(msg, matches)
+local lock_group_cmd = redis:get('group:'..msg.to.id..':cmd')
+if lock_group_cmd or is_muted(msg.to.id, 'All: yes') and not is_momod(msg) then
+return
+else
+if redis:get('group:'..msg.to.id..':cmd') then
+	cmd = 'yes'
+	else
+	cmd = 'no'
+end
+-- expire 
+local expiretime = redis:hget('expiretime', get_receiver(msg))
+    local expire = ''
+  if not expiretime then
+  expire = expire..'تاریخ ست نشده است'
+  else
+   local now = tonumber(os.time())
+   expire =  expire..math.floor((tonumber(expiretime) - tonumber(now)) / 86400) + 1
+ end
+ ----
     if msg.to.type == 'chat' then
         local settings = data[tostring(msg.to.id)]['settings']
         local wordlist = ''
@@ -307,7 +335,7 @@ local function show_group_settings(msg, data)
         for k,v in pairs(data[tostring(msg.to.id)]['blocked_words']) do
             wordlist = wordlist..' / '..k
         end
-        local text = "Group settings:\nLock group member : "..settings.lock_member.."\nLock bot : "..settings.lock_bot.."\nLock share link : "..settings.lock_link.."\nLock for public : "..settings.lock_inviteme.."\nAnti sticker : "..settings.lock_sticker.."\nLock share image : "..settings.lock_image.."\nLock share file : "..settings.lock_file.."\nLock talking : "..settings.lock_talk.."\n\nBlocked words : "..wordlist
+        local text = "Group settings:\nLock group member : "..settings.lock_member.."\nlock cmd : "..cmd.."\nLock bot : "..settings.lock_bot.."\nLock share link : "..settings.lock_link.."\nLock for public : "..settings.lock_inviteme.."\nAnti sticker : "..settings.lock_sticker.."\nLock share image : "..settings.lock_image.."\nLock share file : "..settings.lock_file.."\nLock talking : "..settings.lock_talk.."expire time :"..expire.."\n\nBlocked words : "..wordlist
         return text
     end
 end
@@ -940,7 +968,7 @@ function run(msg, matches)
             if matches[1] == 'rules' then
                 return get_rules(msg, data)
             end
-            if matches[1] == 'close' then --group lock *
+            if matches[1] == 'lock' then --group lock *
                 --[[if matches[2] == 'name' then
                     return lock_group_name(msg, data)
                 end
@@ -971,11 +999,19 @@ function run(msg, matches)
                 if matches[2] == 'chat' then
                 	return lock_group_talk(msg, data)
                 end
+                if matches[2]:lower() == 'cmd' then
+			if redis:get('group:'..msg.to.id..':cmd') then
+			return 'commands for member is disable'
+			else
+			redis:set('group:'..msg.to.id..':cmd', true)
+			return 'commands for member has been disabled'
+			end 
+			end
                 --if matches[2] == 'all' then
                 --	return lock_group_all(msg, data)
                 --end
             end
-            if matches[1] == 'open' then --group unlock *
+            if matches[1] == 'unlock' then --group unlock *
                 --[[if matches[2] == 'name' then
                     return unlock_group_name(msg, data)
                 end
@@ -1006,6 +1042,14 @@ function run(msg, matches)
                 if matches[2] == 'chat' then
                     return unlock_group_talk(msg, data)
                 end
+                if matches[2]:lower() == 'cmd' then
+			if redis:get('group:'..msg.to.id..':cmd') then
+			redis:del('group:'..msg.to.id..':cmd')
+			return 'commands for member has been enabled'
+			else
+			return 'commands for member is enable'
+			end 
+			end
                 --if matches[2] == 'all' then
                 --	return unlock_group_all(msg, data)
                 --end
@@ -1075,20 +1119,21 @@ return {
           },
       },
   patterns = {
-    "^/(block) (.+)$",
-    "^/(unblock) (.+)$",
-    "^/(getlink)$",
-    "^/(relink) (.+)$",
-    "^/(setabout) (.*)$",
-    "^/(about)$",
-    "^/(setrules) (.*)$",
-    "^/(rules)$",
-    "^/(setname) (.*)$",
-    "^/(setphoto)$",
-    "^/(close) (.*)$",
-    "^/(open) (.*)$",
-    "^/(group) (settings)$",
-    "^/(join) (.+)$",
+    "^[!/#](makegp) (.*)$",
+    "^[!/#](block) (.+)$",
+    "^[!/#](unblock) (.+)$",
+    "^[!/#](getlink)$",
+    "^[!/#](relink) (.+)$",
+    "^[!/#](setabout) (.*)$",
+    "^[!/#](about)$",
+    "^[!/#](setrules) (.*)$",
+    "^[!/#](rules)$",
+    "^[!/#](setname) (.*)$",
+    "^[!/#](setphoto)$",
+    "^[!/#](lock) (.*)$",
+    "^[!/#](unlock) (.*)$",
+    "^[!/#](settings)$",
+    "^[!/#](join) (.+)$",
     "%[(photo)%]",
     "%[(document)%]",
     
