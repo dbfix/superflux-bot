@@ -1,12 +1,4 @@
 do
-local function create_group(msg)
-    if not is_sudo(msg) then
-        return "you are not sudo"
-    end
-    local group_creator = msg.from.print_name
-    create_group_chat (group_creator, group_name, ok_cb, false)
-    return 'گروه '..string.gsub(group_name, '_', ' ')..' ساخته شد، پيامها را بررسي کنيد '
-end
 -- make sure to set with value that not higher than stats.lua
 local NUM_MSG_MAX = 4
 local TIME_CHECK = 4 -- seconds
@@ -310,6 +302,8 @@ if redis:get('group:'..msg.to.id..':cmd') then
 	cmd = 'yes'
 	else
 	cmd = 'no'
+end
+end
 end
 -- expire 
 local expiretime = redis:hget('expiretime', get_receiver(msg))
@@ -828,7 +822,7 @@ function run(msg, matches)
             if matches[1] == 'rules' then
                 return get_rules(msg, data)
             end
-            if matches[1] == 'close' then --group lock *
+            if matches[1] == 'lock' then --group lock *
                 if matches[2] == 'name' then
                     return lock_group_name(msg, data)
                 end
@@ -863,7 +857,7 @@ function run(msg, matches)
                 	return lock_group_all(msg, data)
                 end
             end
-            if matches[1] == 'open' then --group unlock *
+            if matches[1] == 'unlock' then --group unlock *
                 if matches[2] == 'name' then
                     return unlock_group_name(msg, data)
                 end
@@ -898,7 +892,7 @@ function run(msg, matches)
                 	return unlock_group_all(msg, data)
                 end
             end
-            if matches[1] == 'group' and matches[2] == 'settings' then
+            if matches[1] == 'settings' then
                 return show_group_settings(msg, data)
             end
             if matches[1] == 'setname' and is_momod(msg) then
@@ -1054,7 +1048,7 @@ function run(msg, matches)
                 --	return unlock_group_all(msg, data)
                 --end
             end
-            if matches[1] == 'group' and matches[2] == 'settings' then
+            if matches[1] == 'settings' then
                 return show_group_settings(msg, data)
             end
             --[[if matches[1] == 'setname' and is_momod(msg) then
@@ -1119,7 +1113,6 @@ return {
           },
       },
   patterns = {
-    "^[!/#](makegp) (.*)$",
     "^[!/#](block) (.+)$",
     "^[!/#](unblock) (.+)$",
     "^[!/#](getlink)$",
